@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate slack;
+extern crate regex;
 
 mod settings;
 
@@ -56,7 +57,9 @@ fn main() {
     let mut client = RtmClient::new(&SETTINGS.token);
     let mut handler = TestHandler;
 
-    client.login_and_run::<TestHandler>(&mut handler);
+    println!("Starting...");
 
-    println!("Hello, world!");
+    client.login_and_run::<TestHandler>(&mut handler).unwrap();
+
+    println!("Finished.");
 }

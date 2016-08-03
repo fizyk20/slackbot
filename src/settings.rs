@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::Path;
 use std::io::Read;
+use std::collections::HashMap;
+use regex::Regex;
 
 pub struct Settings {
     pub token: String
@@ -13,9 +15,19 @@ impl Settings {
         let mut settings = String::new();
         file.read_to_string(&mut settings).ok().expect("Couldn't read from file");
 
-        // temporary
+        let mut values = HashMap::new();
+        let re = Regex::new(r#""([^"]+)"\s*:\s*"([^"]+)""#).unwrap();
+
+        for line in settings.lines() {
+            if let Some(caps) = re.captures(line) {
+                let key = caps.at(1).unwrap();
+                let value = caps.at(2).unwrap();
+                values.insert(key, value);
+            }
+        }
+
         Settings {
-            token: settings.lines().next().unwrap().to_string()
+            token: if let Some(token) = values.get("token") { token.to_string() } else { String::new() }
         }
     }
 }
