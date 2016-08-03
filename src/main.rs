@@ -1,6 +1,11 @@
+#[macro_use]
+extern crate lazy_static;
 extern crate slack;
 
+mod settings;
+
 use slack::{RtmClient, EventHandler, Event, Error, Message};
+use settings::SETTINGS;
 
 struct TestHandler;
 
@@ -48,7 +53,8 @@ impl EventHandler for TestHandler {
 }
 
 fn main() {
-    let mut client = RtmClient::new("token-here");
+    println!("Token: {}", &SETTINGS.token);
+    let mut client = RtmClient::new(&SETTINGS.token);
     let mut handler = TestHandler;
 
     client.login_and_run::<TestHandler>(&mut handler);
