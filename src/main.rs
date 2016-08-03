@@ -53,7 +53,6 @@ impl EventHandler for TestHandler {
 }
 
 fn main() {
-    println!("Token: {}", &SETTINGS.token);
     let mut client = RtmClient::new(&SETTINGS.token);
     let mut handler = TestHandler;
 
