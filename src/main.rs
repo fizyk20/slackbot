@@ -4,30 +4,45 @@ extern crate slack;
 extern crate regex;
 
 mod settings;
+mod plugin;
+mod plugins;
 
+use std::collections::HashMap;
 use slack::{RtmClient, EventHandler, Event, Error, Message};
 use settings::SETTINGS;
+use plugin::Plugin;
+use plugins::*;
 
-struct TestHandler;
+struct BotHandler {
+    plugins: Vec<Box<Plugin>>,
+    users: HashMap<String, String>,
+    channels: HashMap<String, String>
+}
 
-impl TestHandler {
+impl BotHandler {
 
-    pub fn echo(&mut self, client: &mut RtmClient, msg: Message) {
-        match msg {
-            Message::Standard { user, text, channel, .. } => {
-                let user = user.unwrap();
-                let channel = channel.unwrap();
-                let text = text.unwrap();
-                println!("{}: {}", &user, &text);
-                client.send_message(&channel, &text);
-            },
-            _ => ()
+    fn new() -> BotHandler {
+        let mut plugins : Vec<Box<Plugin>> = Vec::new();
+
+        // load all used plugins
+        plugins.push(Box::new(EchoPlugin));
+
+        BotHandler {
+            plugins: plugins,
+            users: HashMap::new(),
+            channels: HashMap::new()
+        }
+    }
+
+    pub fn handle_message(&mut self, client: &mut RtmClient, user: &str, channel: &str, msg: &str) {
+        for plugin in (&mut self.plugins).into_iter() {
+            plugin.handle_message(client, user, channel, msg);
         }
     }
 
 }
 
-impl EventHandler for TestHandler {
+impl EventHandler for BotHandler {
 
     fn on_event(&mut self, client: &mut RtmClient, event: Result<&Event, Error>, raw_json: &str) {
         if event.is_err() {
@@ -36,7 +51,15 @@ impl EventHandler for TestHandler {
 
         match *(event.unwrap()) {
             Event::Message(ref msg) => {
-                self.echo(client, msg.clone());
+                match msg.clone() {
+                    Message::Standard { user, text, channel, .. } => {
+                        let user = user.unwrap();
+                        let channel = channel.unwrap();
+                        let text = text.unwrap();
+                        self.handle_message(client, &user, &channel, &text);
+                    },
+                    _ => ()
+                }
             },
             _ => ()
         }
@@ -55,11 +78,11 @@ impl EventHandler for TestHandler {
 
 fn main() {
     let mut client = RtmClient::new(&SETTINGS.token);
-    let mut handler = TestHandler;
+    let mut handler = BotHandler::new();
 
     println!("Starting...");
 
-    client.login_and_run::<TestHandler>(&mut handler).unwrap();
+    client.login_and_run::<BotHandler>(&mut handler).unwrap();
 
     println!("Finished.");
 }
