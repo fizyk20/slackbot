@@ -35,7 +35,7 @@ impl BotHandler {
     }
 
     pub fn handle_message(&mut self, client: &mut RtmClient, user: &str, channel: &str, msg: &str) {
-        self.plugins.sort_by_key(|x| x.handle_mode(user, channel, msg));
+        self.plugins.sort_by_key(|x| x.plugin_priority(user, channel, msg));
         for plugin in (&mut self.plugins).into_iter() {
             if plugin.handle_message(client, user, channel, msg) {
                 break;
@@ -47,7 +47,7 @@ impl BotHandler {
 
 impl EventHandler for BotHandler {
 
-    fn on_event(&mut self, client: &mut RtmClient, event: Result<&Event, Error>, raw_json: &str) {
+    fn on_event(&mut self, client: &mut RtmClient, event: Result<&Event, Error>, _: &str) {
         if event.is_err() {
             return;
         }
@@ -68,14 +68,14 @@ impl EventHandler for BotHandler {
         }
     }
 
-    fn on_ping(&mut self, client: &mut RtmClient) {
+    fn on_ping(&mut self, _: &mut RtmClient) {
         println!("Ping!");
     }
 
-    fn on_close(&mut self, client: &mut RtmClient) {
+    fn on_close(&mut self, _: &mut RtmClient) {
     }
 
-    fn on_connect(&mut self, client: &mut RtmClient) {
+    fn on_connect(&mut self, _: &mut RtmClient) {
     }
 }
 
