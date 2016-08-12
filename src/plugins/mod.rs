@@ -1,3 +1,3 @@
-mod echo;
+mod logging;
 
-pub use self::echo::EchoPlugin;
+pub use self::logging::Logger;

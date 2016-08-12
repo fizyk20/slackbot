@@ -25,7 +25,7 @@ impl BotHandler {
         let mut plugins : Vec<Box<Plugin>> = Vec::new();
 
         // load all used plugins
-        plugins.push(Box::new(EchoPlugin));
+        plugins.push(Box::new(Logger));
 
         BotHandler {
             plugins: plugins,
@@ -35,8 +35,11 @@ impl BotHandler {
     }
 
     pub fn handle_message(&mut self, client: &mut RtmClient, user: &str, channel: &str, msg: &str) {
+        self.plugins.sort_by_key(|x| x.handle_mode(user, channel, msg));
         for plugin in (&mut self.plugins).into_iter() {
-            plugin.handle_message(client, user, channel, msg);
+            if plugin.handle_message(client, user, channel, msg) {
+                break;
+            }
         }
     }
 
