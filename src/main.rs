@@ -25,8 +25,19 @@ pub enum ResumeEventHandling {
 }
 
 pub enum BotEvent {
+    None(ResumeEventHandling),
     Log(String, ResumeEventHandling),
     Send(String, ResumeEventHandling)
+}
+
+impl BotEvent {
+    pub fn resume_mode(&self) -> ResumeEventHandling {
+        match *self {
+            BotEvent::None(r) => r,
+            BotEvent::Log(_, r) => r,
+            BotEvent::Send(_, r) => r
+        }
+    }
 }
 
 struct BotCore {
@@ -42,7 +53,7 @@ impl BotCore {
         let mut plugins: Vec<Box<Plugin>> = Vec::new();
 
         // load all used plugins
-        plugins.push(Box::new(Patterns));
+        plugins.push(Box::new(Patterns::new().unwrap()));
 
         let log_dir = env::current_dir().unwrap().as_path().join("logs");
 
@@ -60,20 +71,28 @@ impl BotCore {
         self.plugins.sort_by_key(|x| x.plugin_priority(user, channel, msg));
         for plugin in (&mut self.plugins).into_iter() {
             let result = plugin.handle_message(user, channel, msg);
+            let resume = result.resume_mode();
             match result {
-                BotEvent::Log(message, resume) => {
+                BotEvent::Log(message, _) => {
                     let _ = self.logger.log(message);
-                    if resume == ResumeEventHandling::Stop {
-                        break;
+                },
+                BotEvent::Send(message, _) => {
+                    if let Some(channel) = client.get_channel_id(channel) {
+                        if let Err(e) = client.send_message(channel, &message) {
+                            let _ = self.logger.log(format!("***ERROR: Couldn't send message: {:?}", e));
+                        }
+                        else {
+                            let _ = self.logger.log(format!("<{}> {}", client.get_name().unwrap(), &message));
+                        }
+                    }
+                    else {
+                        let _ = self.logger.log(format!("***ERROR: No channel named {}", channel));
                     }
                 },
-                BotEvent::Send(message, resume) => {
-                    let _ = client.send(&message);
-                    let _ = self.logger.log(format!("<{}> {}", client.get_name().unwrap(), &message));
-                    if resume == ResumeEventHandling::Stop {
-                        break;
-                    }
-                }
+                BotEvent::None(_) => ()
+            }
+            if resume == ResumeEventHandling::Stop {
+                break;
             }
         }
     }
@@ -135,7 +154,10 @@ fn main() {
 
     println!("Starting...");
 
-    client.login_and_run::<BotCore>(&mut handler).unwrap();
-
-    println!("Finished.");
+    if let Err(e) = client.login_and_run::<BotCore>(&mut handler) {
+        println!("{:?}", e);
+    }
+    else {
+        println!("Finished.");
+    }
 }
