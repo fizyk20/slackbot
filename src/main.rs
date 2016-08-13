@@ -67,26 +67,23 @@ impl BotCore {
 
     pub fn handle_message(&mut self, client: &mut RtmClient, user: &str, channel: &str, msg: &str) {
         let _ = self.logger.log(format!("<{}> {}", user, msg));
+        let user_name = if let Some(name) = self.users.get(user) { &name } else { user };
+        let channel_name = if let Some(name) = self.channels.get(channel) { &name } else { channel };
 
         self.plugins.sort_by_key(|x| x.plugin_priority(user, channel, msg));
         for plugin in (&mut self.plugins).into_iter() {
-            let result = plugin.handle_message(user, channel, msg);
+            let result = plugin.handle_message(user_name, channel_name, msg);
             let resume = result.resume_mode();
             match result {
                 BotEvent::Log(message, _) => {
                     let _ = self.logger.log(message);
                 },
                 BotEvent::Send(message, _) => {
-                    if let Some(channel) = client.get_channel_id(channel) {
-                        if let Err(e) = client.send_message(channel, &message) {
-                            let _ = self.logger.log(format!("***ERROR: Couldn't send message: {:?}", e));
-                        }
-                        else {
-                            let _ = self.logger.log(format!("<{}> {}", client.get_name().unwrap(), &message));
-                        }
+                    if let Err(e) = client.send_message(channel, &message) {
+                        let _ = self.logger.log(format!("***ERROR: Couldn't send message: {:?}", e));
                     }
                     else {
-                        let _ = self.logger.log(format!("***ERROR: No channel named {}", channel));
+                        let _ = self.logger.log(format!("<{}> {}", client.get_name().unwrap(), &message));
                     }
                 },
                 BotEvent::None(_) => ()
@@ -111,9 +108,7 @@ impl EventHandler for BotCore {
                 match msg.clone() {
                     Message::Standard { user, text, channel, .. } => {
                         let user = user.unwrap();
-                        let user = if let Some(name) = self.users.get(&user) { name.clone() } else { user };
                         let channel = channel.unwrap();
-                        let channel = if let Some(name) = self.channels.get(&channel) { name.clone() } else { channel };
                         let text = text.unwrap();
                         self.handle_message(client, &user, &channel, &text);
                     },
