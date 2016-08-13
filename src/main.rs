@@ -66,9 +66,9 @@ impl BotCore {
     }
 
     pub fn handle_message(&mut self, client: &mut RtmClient, user: &str, channel: &str, msg: &str) {
-        let _ = self.logger.log(format!("<{}> {}", user, msg));
         let user_name = if let Some(name) = self.users.get(user) { &name } else { user };
         let channel_name = if let Some(name) = self.channels.get(channel) { &name } else { channel };
+        let _ = self.logger.log(format!("<{}> {}", user_name, msg));
 
         self.plugins.sort_by_key(|x| x.plugin_priority(user, channel, msg));
         for plugin in (&mut self.plugins).into_iter() {
