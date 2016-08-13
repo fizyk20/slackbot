@@ -5,7 +5,8 @@ use std::collections::HashMap;
 use regex::Regex;
 
 pub struct Settings {
-    pub token: String
+    pub token: String,
+    pub command_char: String,
 }
 
 impl Settings {
@@ -27,7 +28,8 @@ impl Settings {
         }
 
         Settings {
-            token: if let Some(token) = values.get("token") { token.to_string() } else { String::new() }
+            token: if let Some(token) = values.get("token") { token.to_string() } else { String::new() },
+            command_char: if let Some(cmd) = values.get("command_char") { cmd.to_string() } else { "!".to_string() }
         }
     }
 }

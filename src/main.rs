@@ -57,7 +57,9 @@ impl EventHandler for BotHandler {
                 match msg.clone() {
                     Message::Standard { user, text, channel, .. } => {
                         let user = user.unwrap();
+                        let user = if let Some(name) = self.users.get(&user) { name.clone() } else { user };
                         let channel = channel.unwrap();
+                        let channel = if let Some(name) = self.channels.get(&channel) { name.clone() } else { channel };
                         let text = text.unwrap();
                         self.handle_message(client, &user, &channel, &text);
                     },
@@ -75,7 +77,20 @@ impl EventHandler for BotHandler {
     fn on_close(&mut self, _: &mut RtmClient) {
     }
 
-    fn on_connect(&mut self, _: &mut RtmClient) {
+    fn on_connect(&mut self, client: &mut RtmClient) {
+        let users = client.get_users();
+        for user in users.into_iter() {
+            let prefix = if Some(true) == user.is_primary_owner { "&" }
+                         else if Some(true) == user.is_owner { "~" }
+                         else if Some(true) == user.is_admin { "@" }
+                         else { "" };
+            self.users.insert(user.id.clone(), format!("{}{}", prefix, &user.name));
+        }
+
+        let channels = client.get_channels();
+        for channel in channels.into_iter() {
+            self.channels.insert(channel.id.clone(), channel.name.clone());
+        }
     }
 }
 
