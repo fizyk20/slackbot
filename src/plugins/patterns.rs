@@ -35,7 +35,7 @@ impl Plugin for Patterns {
 
     fn handle_message(&mut self, _: &str, _: &str, msg: &str) -> BotEvent {
         for &(ref regex, ref response) in (&self.patterns).into_iter() {
-            if regex.is_match(msg) {
+            if regex.is_match(&msg.to_lowercase()) {
                 return BotEvent::Send(response.clone(), ResumeEventHandling::Resume);
             }
         }
