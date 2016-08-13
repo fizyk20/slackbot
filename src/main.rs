@@ -2,50 +2,85 @@
 extern crate lazy_static;
 extern crate slack;
 extern crate regex;
+extern crate timer;
+extern crate chrono;
 
 mod settings;
 mod plugin;
 mod plugins;
+mod logger;
 
 use std::collections::HashMap;
+use std::env;
 use slack::{RtmClient, EventHandler, Event, Error, Message};
 use settings::SETTINGS;
+use logger::Logger;
 use plugin::Plugin;
 use plugins::*;
 
-struct BotHandler {
-    plugins: Vec<Box<Plugin>>,
-    users: HashMap<String, String>,
-    channels: HashMap<String, String>
+#[derive(PartialEq, Clone, Copy)]
+pub enum ResumeEventHandling {
+    Resume,
+    Stop
 }
 
-impl BotHandler {
+pub enum BotEvent {
+    Log(String, ResumeEventHandling),
+    Send(String, ResumeEventHandling)
+}
 
-    fn new() -> BotHandler {
-        let mut plugins : Vec<Box<Plugin>> = Vec::new();
+struct BotCore {
+    plugins: Vec<Box<Plugin>>,
+    users: HashMap<String, String>,
+    channels: HashMap<String, String>,
+    logger: Logger
+}
+
+impl BotCore {
+
+    fn new() -> BotCore {
+        let mut plugins: Vec<Box<Plugin>> = Vec::new();
 
         // load all used plugins
-        plugins.push(Box::new(Logger));
+        plugins.push(Box::new(Patterns));
 
-        BotHandler {
+        let log_dir = env::current_dir().unwrap().as_path().join("logs");
+
+        BotCore {
             plugins: plugins,
             users: HashMap::new(),
-            channels: HashMap::new()
+            channels: HashMap::new(),
+            logger: Logger::new(log_dir)
         }
     }
 
     pub fn handle_message(&mut self, client: &mut RtmClient, user: &str, channel: &str, msg: &str) {
+        let _ = self.logger.log(format!("<{}> {}", user, msg));
+
         self.plugins.sort_by_key(|x| x.plugin_priority(user, channel, msg));
         for plugin in (&mut self.plugins).into_iter() {
-            if plugin.handle_message(client, user, channel, msg) {
-                break;
+            let result = plugin.handle_message(user, channel, msg);
+            match result {
+                BotEvent::Log(message, resume) => {
+                    let _ = self.logger.log(message);
+                    if resume == ResumeEventHandling::Stop {
+                        break;
+                    }
+                },
+                BotEvent::Send(message, resume) => {
+                    let _ = client.send(&message);
+                    let _ = self.logger.log(format!("<{}> {}", client.get_name().unwrap(), &message));
+                    if resume == ResumeEventHandling::Stop {
+                        break;
+                    }
+                }
             }
         }
     }
 
 }
 
-impl EventHandler for BotHandler {
+impl EventHandler for BotCore {
 
     fn on_event(&mut self, client: &mut RtmClient, event: Result<&Event, Error>, _: &str) {
         if event.is_err() {
@@ -96,11 +131,11 @@ impl EventHandler for BotHandler {
 
 fn main() {
     let mut client = RtmClient::new(&SETTINGS.token);
-    let mut handler = BotHandler::new();
+    let mut handler = BotCore::new();
 
     println!("Starting...");
 
-    client.login_and_run::<BotHandler>(&mut handler).unwrap();
+    client.login_and_run::<BotCore>(&mut handler).unwrap();
 
     println!("Finished.");
 }

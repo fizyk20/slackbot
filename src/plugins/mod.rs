@@ -1,3 +1,3 @@
-mod logging;
+mod patterns;
 
-pub use self::logging::Logger;
+pub use self::patterns::Patterns;
