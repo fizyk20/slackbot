@@ -44,26 +44,27 @@ impl Logger {
         let now_str = now.format("%Y-%m-%d %H:%M:%S");
         let time_diff = now - self.last_log;
 
-        if now.date() > self.last_log.date() {
-            self.day_passed = true;
-        }
-
-        if self.day_passed && (time_diff.num_seconds() > 14400 || now.hour() >= 6) {
-            self.cur_date = now.date();
-            self.day_passed = false;
-        }
-
         if mode == LogMode::Console || mode == LogMode::Both {
             println!("[{}] {}", now_str, what.as_ref());
         }
+
         if mode == LogMode::File || mode == LogMode::Both {
+            if now.date() > self.last_log.date() {
+                self.day_passed = true;
+            }
+
+            if self.day_passed && (time_diff.num_seconds() > 14400 || now.hour() >= 6) {
+                self.cur_date = now.date();
+                self.day_passed = false;
+            }
+
             let path = try!(self.gen_path(&self.cur_date));
             let mut file = try!(OpenOptions::new().create(true).append(true).open(path));
             let what = format!("[{}] {}\n", now_str, what.as_ref());
             try!(file.write(what.as_bytes()));
+            self.last_log = now;
         }
 
-        self.last_log = now;
         Ok(())
     }
 
