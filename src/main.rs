@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use std::env;
 use slack::{RtmClient, EventHandler, Event, Error, Message};
 use settings::SETTINGS;
-use logger::Logger;
+use logger::{Logger, LogMode};
 use plugin::Plugin;
 use plugins::*;
 
@@ -120,10 +120,11 @@ impl EventHandler for BotCore {
     }
 
     fn on_ping(&mut self, _: &mut RtmClient) {
-        println!("Ping!");
+        let _ = self.logger.log_with_mode("Ping!", LogMode::Console);
     }
 
     fn on_close(&mut self, _: &mut RtmClient) {
+        let _ = self.logger.log("*** Disconnected ***");
     }
 
     fn on_connect(&mut self, client: &mut RtmClient) {
@@ -140,6 +141,8 @@ impl EventHandler for BotCore {
         for channel in channels.into_iter() {
             self.channels.insert(channel.id.clone(), channel.name.clone());
         }
+        
+        let _ = self.logger.log("*** Connected to Slack ***");
     }
 }
 
@@ -147,12 +150,7 @@ fn main() {
     let mut client = RtmClient::new(&SETTINGS.token);
     let mut handler = BotCore::new();
 
-    println!("Starting...");
-
     if let Err(e) = client.login_and_run::<BotCore>(&mut handler) {
         println!("{:?}", e);
-    }
-    else {
-        println!("Finished.");
     }
 }
