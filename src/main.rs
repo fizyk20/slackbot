@@ -42,6 +42,14 @@ impl BotEvent {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct MessageData<'a> {
+    pub self_name: &'a str,
+    pub user: &'a str,
+    pub channel: &'a str,
+    pub msg: &'a str
+}
+
 struct BotCore {
     plugins: Vec<Box<Plugin>>,
     users: HashMap<String, String>,
@@ -72,6 +80,13 @@ impl BotCore {
         let user_name = if let Some(name) = self.users.get(user) { &name } else { user };
         let channel_name = if let Some(name) = self.channels.get(channel) { &name } else { channel };
         let _ = self.logger.log(format!("<{}> {}", user_name, msg));
+        let self_name = client.get_name().unwrap();
+        let msg_data = MessageData {
+            self_name: &self_name,
+            user: user_name,
+            channel: channel_name,
+            msg: msg
+        };
 
         self.plugins.sort_by_key(|x| x.plugin_priority(user, channel, msg));
         for plugin in (&mut self.plugins).into_iter() {
@@ -82,7 +97,7 @@ impl BotCore {
                     plugin.handle_command(user_name, channel_name, params)
                 }
                 else {
-                    plugin.handle_message(user_name, channel_name, msg)
+                    plugin.handle_message(msg_data.clone())
                 };
             let resume = result.resume_mode();
             match result {

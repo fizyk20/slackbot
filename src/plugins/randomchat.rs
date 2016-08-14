@@ -1,5 +1,5 @@
 use plugin::Plugin;
-use ::{BotEvent, ResumeEventHandling};
+use ::{BotEvent, ResumeEventHandling, MessageData};
 use dictionary::Dictionary;
 use settings::SETTINGS;
 use rand::{self, Rng};
@@ -28,7 +28,7 @@ impl Plugin for RandomChat {
         10
     }
 
-    fn handle_message(&mut self, _: &str, _: &str, _: &str) -> BotEvent {
+    fn handle_message(&mut self, data: MessageData) -> BotEvent {
         if !self.enabled {
             return BotEvent::None(ResumeEventHandling::Resume);
         }

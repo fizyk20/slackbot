@@ -2,7 +2,7 @@ use plugin::Plugin;
 use regex::Regex;
 use std::fs::File;
 use std::io::{self, Read};
-use ::{BotEvent, ResumeEventHandling};
+use ::{BotEvent, ResumeEventHandling, MessageData};
 
 pub struct Patterns {
     patterns: Vec<(Regex, String)>
@@ -33,9 +33,9 @@ impl Plugin for Patterns {
         -1
     }
 
-    fn handle_message(&mut self, _: &str, _: &str, msg: &str) -> BotEvent {
+    fn handle_message(&mut self, data: MessageData) -> BotEvent {
         for &(ref regex, ref response) in (&self.patterns).into_iter() {
-            if regex.is_match(&msg.to_lowercase()) {
+            if regex.is_match(&data.msg.to_lowercase()) {
                 return BotEvent::Send(response.clone(), ResumeEventHandling::Resume);
             }
         }
