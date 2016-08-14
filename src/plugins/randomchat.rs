@@ -3,10 +3,12 @@ use ::{BotEvent, ResumeEventHandling};
 use dictionary::Dictionary;
 use settings::SETTINGS;
 use rand::{self, Rng};
+use std::str::FromStr;
 
 pub struct RandomChat {
     dict: Dictionary,
-    enabled: bool
+    enabled: bool,
+    probability: u8
 }
 
 impl RandomChat {
@@ -14,7 +16,8 @@ impl RandomChat {
         let dict = Dictionary::load("dictionary.dat").unwrap();
         RandomChat {
             dict: dict,
-            enabled: SETTINGS.get_other("randomchat_enabled").unwrap() == "true"
+            enabled: SETTINGS.get_other("randomchat_enabled").unwrap() == "true",
+            probability: FromStr::from_str(SETTINGS.get_other("randomchat_probability").unwrap()).unwrap()
         }
     }
 }
@@ -28,7 +31,7 @@ impl Plugin for RandomChat {
         if !self.enabled {
             return BotEvent::None(ResumeEventHandling::Resume);
         }
-        if rand::thread_rng().gen_range(0, 100) < 40 {
+        if rand::thread_rng().gen_range(0, 100) < self.probability {
             let response = self.dict.generate_sentence();
             BotEvent::Send(response, ResumeEventHandling::Resume)
         }
