@@ -3,6 +3,18 @@ name = "lucidbot-slack"
 version = "0.1.0"
 authors = ["Bartłomiej Kamiński <fizyk20@gmail.com>"]
 
+[lib]
+name = "dictionary"
+path = "src/dictionary/lib.rs"
+
+[[bin]]
+name = "lucidbot-slack"
+path = "src/main.rs"
+
+[[bin]]
+name = "dict-gen"
+path = "src/dict-gen/main.rs"
+
 [dependencies]
 slack = "0.15"
 lazy_static = "*"
