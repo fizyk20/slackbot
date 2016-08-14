@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::path::Path;
@@ -19,7 +19,7 @@ fn to_u32(x: &[u8]) -> Option<u32> {
     Some(x[0] as u32 + ((x[1] as u32) << 8) + ((x[2] as u32) << 16) + ((x[3] as u32) << 24))
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Word {
     Start1,
     Start2,
@@ -61,20 +61,17 @@ impl Word {
 
 pub type Entry = (Word, Word);
 
-pub struct Result {
-    word: Word,
-    chance: u32
-}
-
 pub struct Dictionary {
     words: Vec<String>,
-    dict: HashMap<Entry, Vec<Result>>
+    index_map: HashMap<String, usize>,
+    dict: HashMap<Entry, BTreeMap<Word, u32>>
 }
 
 impl Dictionary {
     pub fn new() -> Dictionary {
         Dictionary {
             words: Vec::new(),
+            index_map: HashMap::new(),
             dict: HashMap::new()
         }
     }
@@ -99,12 +96,12 @@ impl Dictionary {
             result.extend_from_slice(&key.1.into_bytes());
             // second, possible results
             let data = self.dict.get(key).unwrap();
-            // vec length
+            // btreemap length
             result.extend_from_slice(&to_4u8(data.len() as u32));
             // and entries
-            for entry in data.into_iter() {
-                result.extend_from_slice(&entry.word.into_bytes());
-                result.extend_from_slice(&to_4u8(entry.chance));
+            for (word, chance) in data.into_iter() {
+                result.extend_from_slice(&word.into_bytes());
+                result.extend_from_slice(&to_4u8(*chance));
             }
         }
 
@@ -114,13 +111,15 @@ impl Dictionary {
     fn from_bytes(bytes: &[u8]) -> Option<Dictionary> {
         let num_words = to_u32(&bytes[0..4]).unwrap();
         let mut words = Vec::new();
+        let mut index_map = HashMap::new();
         // read words
         let mut cursor = 4;
-        for _ in 0..num_words {
+        for i in 0..num_words {
             let word_length = to_u32(&bytes[cursor..cursor+4]).unwrap() as usize;
             cursor += 4;
             if let Ok(word) = ::std::str::from_utf8(&bytes[cursor..cursor+word_length]) {
                 words.push(word.to_string());
+                index_map.insert(word.to_lowercase().to_string(), i as usize);
             }
             else {
                 return None;
@@ -152,7 +151,7 @@ impl Dictionary {
             cursor += 5;
             let num_results = to_u32(&bytes[cursor..cursor+4]).unwrap();
             cursor += 4;
-            let mut results = Vec::new();
+            let mut results = BTreeMap::new();
             for _ in 0..num_results {
                 let word;
                 if let Some(w) = Word::from_bytes(&bytes[cursor..cursor+5]) {
@@ -164,12 +163,13 @@ impl Dictionary {
                 cursor += 5;
                 let chance = to_u32(&bytes[cursor..cursor+4]).unwrap();
                 cursor += 4;
-                results.push(Result { word: word, chance: chance });
+                results.insert(word, chance);
             }
             hashmap.insert((word1, word2), results);
         }
         Some(Dictionary {
             words: words,
+            index_map: index_map,
             dict: hashmap
         })
     }
@@ -190,6 +190,38 @@ impl Dictionary {
         }
         else {
             Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid dictionary input"))
+        }
+    }
+
+    fn insert_word<S: AsRef<str>>(&mut self, word: S) -> usize {
+        if let Some(index) = self.index_map.get(&word.as_ref().to_lowercase()) {
+            return *index
+        }
+        self.words.push(word.as_ref().to_string());
+        self.index_map.insert(word.as_ref().to_lowercase().to_string(), self.words.len() - 1);
+        self.words.len() - 1
+    }
+
+    pub fn learn_from_line<S: AsRef<str>>(&mut self, line: S) {
+        let words = line.as_ref().split_whitespace();
+        let mut words_new = vec![Word::Start1, Word::Start2];
+        words_new.extend(words.map(|x| Word::Word(self.insert_word(x) as u32)));
+        words_new.push(Word::End);
+
+        for i in 2..words_new.len() {
+            let entry = (words_new[i-2], words_new[i-1]);
+            let word = words_new[i];
+            if let Some(data) = self.dict.get_mut(&entry) {
+                if let Some(chance) = data.get_mut(&word) {
+                    *chance += 1;
+                    continue;
+                }
+                data.insert(word, 1);
+                continue;
+            }
+            let mut map = BTreeMap::new();
+            map.insert(word, 1);
+            self.dict.insert(entry, map);
         }
     }
 }
