@@ -4,6 +4,7 @@ extern crate slack;
 extern crate regex;
 extern crate timer;
 extern crate chrono;
+extern crate dictionary;
 
 mod settings;
 mod plugin;
@@ -54,6 +55,7 @@ impl BotCore {
 
         // load all used plugins
         plugins.push(Box::new(Patterns::new().unwrap()));
+        plugins.push(Box::new(RandomChat::new()));
 
         let log_dir = env::current_dir().unwrap().as_path().join("logs");
 
@@ -74,7 +76,7 @@ impl BotCore {
         for plugin in (&mut self.plugins).into_iter() {
             let result = 
                 if msg.starts_with(&SETTINGS.command_char) {
-                    plugin.handle_command(user_name, channel_name, msg)
+                    plugin.handle_command(user_name, channel_name, &msg[SETTINGS.command_char.len()..])
                 }
                 else {
                     plugin.handle_message(user_name, channel_name, msg)
