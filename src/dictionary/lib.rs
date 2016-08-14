@@ -1,7 +1,10 @@
+extern crate rand;
+
 use std::collections::{HashMap, BTreeMap};
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::path::Path;
+use rand::Rng;
 
 fn to_4u8(x: u32) -> [u8; 4] {
     let mut result = [0; 4];
@@ -222,6 +225,67 @@ impl Dictionary {
             let mut map = BTreeMap::new();
             map.insert(word, 1);
             self.dict.insert(entry, map);
+        }
+    }
+
+    fn get_next_word(&self, w1: Word, w2: Word) -> Option<Word> {
+        let mut rng = rand::thread_rng();
+        let possibilities;
+        if let Some(p) = self.dict.get(&(w1, w2)) {
+            possibilities = p;
+        }
+        else {
+            return None;
+        }
+        let mut sum = 0;
+        for (_, v) in possibilities.iter() {
+            sum += *v;
+        }
+
+        let mut random = rng.gen_range(0, sum);
+        for (&k, &v) in possibilities.iter() {
+            if random < v {
+                return Some(k);
+            }
+            random -= v;
+        }
+
+        None
+    }
+
+    pub fn generate_sentence(&self) -> String {
+        let mut w1 = Word::Start1;
+        let mut w2 = Word::Start2;
+
+        let mut words = Vec::new();
+        loop {
+            let next_word;
+            if let Some(nw) = self.get_next_word(w1, w2) {
+                next_word = nw;
+            }
+            else {
+                break;
+            }
+            if next_word == Word::End {
+                break;
+            }
+            if let Word::Word(index) = next_word {
+                words.push(self.words[index as usize].clone());
+            }
+            w1 = w2;
+            w2 = next_word;
+        }
+
+        if words.len() > 0 {
+            let mut result = words[0].to_string();
+            for word in &words[1..] {
+                result.push_str(" ");
+                result.push_str(word);
+            }
+            result
+        }
+        else {
+            String::new()
         }
     }
 }
