@@ -64,6 +64,40 @@ impl Word {
 
 pub type Entry = (Word, Word);
 
+struct ByteReader<'a> {
+    bytes: &'a [u8],
+    cursor: usize
+}
+
+impl<'a> ByteReader<'a> {
+    fn new(bytes: &[u8]) -> ByteReader {
+        ByteReader {
+            bytes: bytes,
+            cursor: 0
+        }
+    }
+
+    fn read_u32(&mut self) -> u32 {
+        let result = to_u32(&self.bytes[self.cursor..self.cursor+4]).unwrap();
+        self.cursor += 4;
+        result
+    }
+
+    fn read_word(&mut self) -> Word {
+        let result = Word::from_bytes(&self.bytes[self.cursor..self.cursor+5]).unwrap();
+        self.cursor += 5;
+        result
+    }
+
+    fn read_string(&mut self) -> String {
+        let word_length = to_u32(&self.bytes[self.cursor..self.cursor+4]).unwrap() as usize;
+        self.cursor += 4;
+        let word = ::std::str::from_utf8(&self.bytes[self.cursor..self.cursor+word_length]).unwrap();
+        self.cursor += word_length;
+        word.to_string()
+    }
+}
+
 pub struct Dictionary {
     words: Vec<String>,
     index_map: HashMap<String, usize>,
@@ -112,60 +146,29 @@ impl Dictionary {
     }
 
     fn from_bytes(bytes: &[u8]) -> Option<Dictionary> {
-        let num_words = to_u32(&bytes[0..4]).unwrap();
+        let mut reader = ByteReader::new(bytes);
+        let num_words = reader.read_u32();
         let mut words = Vec::new();
         let mut index_map = HashMap::new();
         // read words
-        let mut cursor = 4;
         for i in 0..num_words {
-            let word_length = to_u32(&bytes[cursor..cursor+4]).unwrap() as usize;
-            cursor += 4;
-            if let Ok(word) = ::std::str::from_utf8(&bytes[cursor..cursor+word_length]) {
-                words.push(word.to_string());
-                index_map.insert(word.to_lowercase().to_string(), i as usize);
-            }
-            else {
-                return None;
-            }
-            cursor += word_length;
+            let word = reader.read_string();
+            words.push(word.clone());
+            index_map.insert(word.to_lowercase(), i as usize);
         }
         // read entry map
-        let num_entries = to_u32(&bytes[cursor..cursor+4]).unwrap();
+        let num_entries = reader.read_u32();
         let mut hashmap = HashMap::new();
-        cursor += 4;
         for _ in 0..num_entries {
             // first entry word
-            let word1;
-            if let Some(word) = Word::from_bytes(&bytes[cursor..cursor+5]) {
-                word1 = word;
-            }
-            else {
-                return None;
-            }
-            cursor += 5;
+            let word1 = reader.read_word();
             // second entry word
-            let word2;
-            if let Some(word) = Word::from_bytes(&bytes[cursor..cursor+5]) {
-                word2 = word;
-            }
-            else {
-                return None;
-            }
-            cursor += 5;
-            let num_results = to_u32(&bytes[cursor..cursor+4]).unwrap();
-            cursor += 4;
+            let word2 = reader.read_word();
+            let num_results = reader.read_u32();
             let mut results = BTreeMap::new();
             for _ in 0..num_results {
-                let word;
-                if let Some(w) = Word::from_bytes(&bytes[cursor..cursor+5]) {
-                    word = w;
-                }
-                else {
-                    return None;
-                }
-                cursor += 5;
-                let chance = to_u32(&bytes[cursor..cursor+4]).unwrap();
-                cursor += 4;
+                let word = reader.read_word();
+                let chance = reader.read_u32();
                 results.insert(word, chance);
             }
             hashmap.insert((word1, word2), results);
