@@ -4,11 +4,16 @@ use dictionary::Dictionary;
 use settings::SETTINGS;
 use rand::{self, Rng};
 use std::str::FromStr;
+use timer::{Timer, Guard};
+use chrono::Duration;
+use std::sync::{Arc, Mutex};
 
 pub struct RandomChat {
-    dict: Dictionary,
+    dict: Arc<Mutex<Dictionary>>,
     enabled: bool,
-    probability: u8
+    probability: u8,
+    autosave_timer: Option<Timer>,
+    autosave_guard: Option<Guard>
 }
 
 impl RandomChat {
@@ -16,9 +21,24 @@ impl RandomChat {
         let dict = Dictionary::load("dictionary.dat").unwrap();
         let settings = SETTINGS.lock().unwrap();
         RandomChat {
-            dict: dict,
+            dict: Arc::new(Mutex::new(dict)),
             enabled: settings.get_other("randomchat_enabled").unwrap() == "true",
-            probability: FromStr::from_str(settings.get_other("randomchat_probability").unwrap()).unwrap()
+            probability: FromStr::from_str(settings.get_other("randomchat_probability").unwrap()).unwrap(),
+            autosave_timer: None,
+            autosave_guard: None
+        }
+    }
+
+    fn init_timer(&mut self) {
+        if self.autosave_timer.is_none() {
+            self.autosave_timer = Some(Timer::new());
+            self.autosave_guard = {
+                let dict = self.dict.clone();
+                Some(self.autosave_timer.as_ref().unwrap()
+                    .schedule_repeating(Duration::minutes(10), move || {
+                        let _ = dict.lock().unwrap().save("dictionary.dat");
+                    }))
+            }
         }
     }
 }
@@ -32,8 +52,12 @@ impl Plugin for RandomChat {
         if !self.enabled {
             return BotEvent::None(ResumeEventHandling::Resume);
         }
+        self.init_timer();
+        if data.self_name != data.user {
+            self.dict.lock().unwrap().learn_from_line(data.msg);
+        }
         if rand::thread_rng().gen_range(0, 100) < self.probability {
-            let response = self.dict.generate_sentence();
+            let response = self.dict.lock().unwrap().generate_sentence();
             BotEvent::Send(response, ResumeEventHandling::Resume)
         }
         else {
@@ -43,7 +67,7 @@ impl Plugin for RandomChat {
 
     fn handle_command(&mut self, _: &str, _: &str, params: Vec<String>) -> BotEvent {
         if params[0] == "gadaj" {
-            let response = self.dict.generate_sentence();
+            let response = self.dict.lock().unwrap().generate_sentence();
             BotEvent::Send(response, ResumeEventHandling::Stop)
         }
         else if params[0] == "random" {
