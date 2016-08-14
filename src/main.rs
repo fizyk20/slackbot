@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::env;
 use slack::{RtmClient, EventHandler, Event, Error, Message};
 use settings::SETTINGS;
-use logger::{Logger, LogMode};
+use logger::Logger;
 use plugin::Plugin;
 use plugins::*;
 
@@ -130,7 +130,6 @@ impl EventHandler for BotCore {
     }
 
     fn on_ping(&mut self, _: &mut RtmClient) {
-        let _ = self.logger.log_with_mode("Ping!", LogMode::Console);
     }
 
     fn on_close(&mut self, _: &mut RtmClient) {

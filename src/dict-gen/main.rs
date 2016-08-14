@@ -57,5 +57,5 @@ fn main() {
 
     learn_from_dir(base_dir, &mut dict);
 
-    dict.save("dictionary.dat");
+    let _ = dict.save("dictionary.dat");
 }
