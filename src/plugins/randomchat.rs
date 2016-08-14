@@ -14,10 +14,11 @@ pub struct RandomChat {
 impl RandomChat {
     pub fn new() -> RandomChat {
         let dict = Dictionary::load("dictionary.dat").unwrap();
+        let settings = SETTINGS.lock().unwrap();
         RandomChat {
             dict: dict,
-            enabled: SETTINGS.get_other("randomchat_enabled").unwrap() == "true",
-            probability: FromStr::from_str(SETTINGS.get_other("randomchat_probability").unwrap()).unwrap()
+            enabled: settings.get_other("randomchat_enabled").unwrap() == "true",
+            probability: FromStr::from_str(settings.get_other("randomchat_probability").unwrap()).unwrap()
         }
     }
 }
@@ -51,10 +52,12 @@ impl Plugin for RandomChat {
             }
             if params[1] == "enable" {
                 self.enabled = true;
+                SETTINGS.lock().unwrap().set_other("randomchat_enabled".to_string(), "true".to_string());
                 return BotEvent::Send(String::from("RandomChat enabled."), ResumeEventHandling::Stop);
             }
             else if params[1] == "disable" {
                 self.enabled = false;
+                SETTINGS.lock().unwrap().set_other("randomchat_enabled".to_string(), "false".to_string());
                 return BotEvent::Send(String::from("RandomChat disabled."), ResumeEventHandling::Stop);
             }
             else {

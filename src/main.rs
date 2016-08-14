@@ -75,9 +75,10 @@ impl BotCore {
 
         self.plugins.sort_by_key(|x| x.plugin_priority(user, channel, msg));
         for plugin in (&mut self.plugins).into_iter() {
+            let command_char = &SETTINGS.lock().unwrap().command_char;
             let result = 
-                if msg.starts_with(&SETTINGS.command_char) {
-                    let params = msg[SETTINGS.command_char.len()..].split_whitespace().map(|x| x.to_lowercase()).collect();
+                if msg.starts_with(command_char) {
+                    let params = msg[command_char.len()..].split_whitespace().map(|x| x.to_lowercase()).collect();
                     plugin.handle_command(user_name, channel_name, params)
                 }
                 else {
@@ -156,7 +157,7 @@ impl EventHandler for BotCore {
 }
 
 fn main() {
-    let mut client = RtmClient::new(&SETTINGS.token);
+    let mut client = RtmClient::new(&SETTINGS.lock().unwrap().token);
     let mut handler = BotCore::new();
 
     if let Err(e) = client.login_and_run::<BotCore>(&mut handler) {
