@@ -72,7 +72,13 @@ impl BotCore {
 
         self.plugins.sort_by_key(|x| x.plugin_priority(user, channel, msg));
         for plugin in (&mut self.plugins).into_iter() {
-            let result = plugin.handle_message(user_name, channel_name, msg);
+            let result = 
+                if msg.starts_with(&SETTINGS.command_char) {
+                    plugin.handle_command(user_name, channel_name, msg)
+                }
+                else {
+                    plugin.handle_message(user_name, channel_name, msg)
+                };
             let resume = result.resume_mode();
             match result {
                 BotEvent::Log(message, _) => {
