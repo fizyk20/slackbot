@@ -43,7 +43,7 @@ impl Settings {
     pub fn save(&self) {
         let mut file = fs::File::create(&self.path).unwrap();
         for (key, value) in self.other.iter() {
-            let line = format!(r#""{}" : "{}"\n"#, key, value);
+            let line = format!("\"{}\" : \"{}\"\n", key, value);
             let _ = file.write(line.as_bytes());
         }
     }
