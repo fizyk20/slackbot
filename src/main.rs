@@ -76,7 +76,8 @@ impl BotCore {
         for plugin in (&mut self.plugins).into_iter() {
             let result = 
                 if msg.starts_with(&SETTINGS.command_char) {
-                    plugin.handle_command(user_name, channel_name, &msg[SETTINGS.command_char.len()..])
+                    let params = msg[SETTINGS.command_char.len()..].split_whitespace().map(|x| x.to_lowercase()).collect();
+                    plugin.handle_command(user_name, channel_name, params)
                 }
                 else {
                     plugin.handle_message(user_name, channel_name, msg)

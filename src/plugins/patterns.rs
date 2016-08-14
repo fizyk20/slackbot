@@ -42,7 +42,7 @@ impl Plugin for Patterns {
         BotEvent::None(ResumeEventHandling::Resume)
     }
 
-    fn handle_command(&mut self, _: &str, _: &str, _: &str) -> BotEvent {
+    fn handle_command(&mut self, _: &str, _: &str, _: Vec<String>) -> BotEvent {
         BotEvent::None(ResumeEventHandling::Resume)
     }
 }
