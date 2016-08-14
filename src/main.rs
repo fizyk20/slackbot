@@ -5,6 +5,7 @@ extern crate regex;
 extern crate timer;
 extern crate chrono;
 extern crate dictionary;
+extern crate rand;
 
 mod settings;
 mod plugin;
