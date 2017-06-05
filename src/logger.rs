@@ -7,18 +7,17 @@ use chrono::{Date, DateTime, Local, Timelike};
 pub enum LogMode {
     File,
     Console,
-    Both
+    Both,
 }
 
 pub struct Logger {
     base_dir: PathBuf,
     cur_date: Date<Local>,
     last_log: DateTime<Local>,
-    day_passed: bool
+    day_passed: bool,
 }
 
 impl Logger {
-
     fn gen_path(&self, date: &Date<Local>) -> io::Result<PathBuf> {
         let base_dir = self.base_dir.as_path();
         let year_str = format!("{}", date.format("%Y"));
@@ -30,12 +29,12 @@ impl Logger {
         Ok(path.join(format!("{}.txt", day_str)))
     }
 
-    pub fn new<P: AsRef<Path>>(path: P) -> Logger { 
+    pub fn new<P: AsRef<Path>>(path: P) -> Logger {
         Logger {
             base_dir: path.as_ref().to_path_buf(),
             cur_date: Local::today(),
             last_log: Local::now(),
-            day_passed: false
+            day_passed: false,
         }
     }
 
@@ -71,5 +70,4 @@ impl Logger {
     pub fn log<P: AsRef<str>>(&mut self, what: P) -> io::Result<()> {
         self.log_with_mode(what, LogMode::Both)
     }
-
 }

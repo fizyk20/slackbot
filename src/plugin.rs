@@ -1,5 +1,5 @@
-use ::BotEvent;
-use ::MessageData;
+use BotEvent;
+use MessageData;
 
 pub trait Plugin {
     fn plugin_priority(&self, user: &str, channel: &str, msg: &str) -> i16;

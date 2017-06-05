@@ -10,16 +10,17 @@ pub struct Settings {
     path: PathBuf,
     pub token: String,
     pub command_char: String,
-    other: HashMap<String, String>
+    other: HashMap<String, String>,
 }
 
 impl Settings {
-
     pub fn from_file<P: AsRef<Path>>(path: P) -> Settings {
         let path_buf = path.as_ref().to_path_buf();
         let mut file = fs::File::open(path).ok().unwrap();
         let mut settings = String::new();
-        file.read_to_string(&mut settings).ok().expect("Couldn't read from file");
+        file.read_to_string(&mut settings)
+            .ok()
+            .expect("Couldn't read from file");
 
         let mut values = HashMap::new();
         let re = Regex::new(r#""([^"]+)"\s*:\s*"([^"]+)""#).unwrap();
@@ -34,9 +35,17 @@ impl Settings {
 
         Settings {
             path: path_buf,
-            token: if let Some(token) = values.get("token") { token.to_string() } else { String::new() },
-            command_char: if let Some(cmd) = values.get("command_char") { cmd.to_string() } else { "!".to_string() },
-            other: values
+            token: if let Some(token) = values.get("token") {
+                token.to_string()
+            } else {
+                String::new()
+            },
+            command_char: if let Some(cmd) = values.get("command_char") {
+                cmd.to_string()
+            } else {
+                "!".to_string()
+            },
+            other: values,
         }
     }
 
@@ -48,8 +57,10 @@ impl Settings {
         }
     }
 
-    pub fn get_other<Q: ?Sized>(&self, key: &Q) -> Option<&String> 
-        where String: Borrow<Q>, Q: Hash + Eq {
+    pub fn get_other<Q: ?Sized>(&self, key: &Q) -> Option<&String>
+        where String: Borrow<Q>,
+              Q: Hash + Eq
+    {
         self.other.get(key)
     }
 
@@ -57,7 +68,6 @@ impl Settings {
         self.other.insert(key, value);
         self.save();
     }
-
 }
 
 lazy_static! {

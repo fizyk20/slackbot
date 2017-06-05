@@ -1,5 +1,5 @@
 use plugin::Plugin;
-use ::{BotEvent, ResumeEventHandling, MessageData};
+use {BotEvent, ResumeEventHandling, MessageData};
 use dictionary::Dictionary;
 use settings::SETTINGS;
 use rand::{self, Rng};
@@ -13,7 +13,7 @@ pub struct RandomChat {
     enabled: bool,
     probability: u8,
     autosave_timer: Option<Timer>,
-    autosave_guard: Option<Guard>
+    autosave_guard: Option<Guard>,
 }
 
 impl RandomChat {
@@ -23,9 +23,10 @@ impl RandomChat {
         RandomChat {
             dict: Arc::new(Mutex::new(dict)),
             enabled: settings.get_other("randomchat_enabled").unwrap() == "true",
-            probability: FromStr::from_str(settings.get_other("randomchat_probability").unwrap()).unwrap(),
+            probability: FromStr::from_str(settings.get_other("randomchat_probability").unwrap())
+                .unwrap(),
             autosave_timer: None,
-            autosave_guard: None
+            autosave_guard: None,
         }
     }
 
@@ -34,10 +35,12 @@ impl RandomChat {
             self.autosave_timer = Some(Timer::new());
             self.autosave_guard = {
                 let dict = self.dict.clone();
-                Some(self.autosave_timer.as_ref().unwrap()
-                    .schedule_repeating(Duration::minutes(10), move || {
-                        let _ = dict.lock().unwrap().save("dictionary.dat");
-                    }))
+                Some(self.autosave_timer
+                         .as_ref()
+                         .unwrap()
+                         .schedule_repeating(Duration::minutes(10), move || {
+                    let _ = dict.lock().unwrap().save("dictionary.dat");
+                }))
             }
         }
     }
@@ -59,8 +62,7 @@ impl Plugin for RandomChat {
         if rand::thread_rng().gen_range(0, 100) < self.probability {
             let response = self.dict.lock().unwrap().generate_sentence();
             BotEvent::Send(response, ResumeEventHandling::Resume)
-        }
-        else {
+        } else {
             BotEvent::None(ResumeEventHandling::Resume)
         }
     }
@@ -69,26 +71,33 @@ impl Plugin for RandomChat {
         if params[0] == "gadaj" {
             let response = self.dict.lock().unwrap().generate_sentence();
             BotEvent::Send(response, ResumeEventHandling::Stop)
-        }
-        else if params[0] == "random" {
+        } else if params[0] == "random" {
             if params.len() < 2 {
-                return BotEvent::Send(String::from("Not enough parameters"), ResumeEventHandling::Stop);
+                return BotEvent::Send(String::from("Not enough parameters"),
+                                      ResumeEventHandling::Stop);
             }
             if params[1] == "enable" {
                 self.enabled = true;
-                SETTINGS.lock().unwrap().set_other("randomchat_enabled".to_string(), "true".to_string());
-                return BotEvent::Send(String::from("RandomChat enabled."), ResumeEventHandling::Stop);
-            }
-            else if params[1] == "disable" {
+                SETTINGS
+                    .lock()
+                    .unwrap()
+                    .set_other("randomchat_enabled".to_string(), "true".to_string());
+                return BotEvent::Send(String::from("RandomChat enabled."),
+                                      ResumeEventHandling::Stop);
+            } else if params[1] == "disable" {
                 self.enabled = false;
-                SETTINGS.lock().unwrap().set_other("randomchat_enabled".to_string(), "false".to_string());
-                return BotEvent::Send(String::from("RandomChat disabled."), ResumeEventHandling::Stop);
+                SETTINGS
+                    .lock()
+                    .unwrap()
+                    .set_other("randomchat_enabled".to_string(), "false".to_string());
+                return BotEvent::Send(String::from("RandomChat disabled."),
+                                      ResumeEventHandling::Stop);
+            } else {
+                return BotEvent::Send(format!("Unknown parameter value: {}", params[1])
+                                          .to_string(),
+                                      ResumeEventHandling::Stop);
             }
-            else {
-                return BotEvent::Send(format!("Unknown parameter value: {}", params[1]).to_string(), ResumeEventHandling::Stop);
-            }
-        }
-        else {
+        } else {
             BotEvent::None(ResumeEventHandling::Resume)
         }
     }

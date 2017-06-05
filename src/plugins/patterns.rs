@@ -2,10 +2,10 @@ use plugin::Plugin;
 use regex::Regex;
 use std::fs::File;
 use std::io::{self, Read};
-use ::{BotEvent, ResumeEventHandling, MessageData};
+use {BotEvent, ResumeEventHandling, MessageData};
 
 pub struct Patterns {
-    patterns: Vec<(Regex, String)>
+    patterns: Vec<(Regex, String)>,
 }
 
 impl Patterns {
@@ -13,18 +13,18 @@ impl Patterns {
         let mut file = try!(File::open("patterns.ini"));
         let mut contents = String::new();
         try!(file.read_to_string(&mut contents));
-        
+
         let mut patterns = Vec::new();
         let mut lines = contents.lines().peekable();
         while lines.peek().is_some() {
             let pattern = lines.next().unwrap();
-            let response = lines.next().expect("A pattern without a response detected!");
+            let response = lines
+                .next()
+                .expect("A pattern without a response detected!");
             patterns.push((Regex::new(pattern).unwrap(), response.to_string()));
         }
 
-        Ok(Patterns {
-            patterns: patterns
-        })
+        Ok(Patterns { patterns: patterns })
     }
 }
 

@@ -25,13 +25,13 @@ use plugins::*;
 #[derive(PartialEq, Clone, Copy)]
 pub enum ResumeEventHandling {
     Resume,
-    Stop
+    Stop,
 }
 
 pub enum BotEvent {
     None(ResumeEventHandling),
     Log(String, ResumeEventHandling),
-    Send(String, ResumeEventHandling)
+    Send(String, ResumeEventHandling),
 }
 
 impl BotEvent {
@@ -39,7 +39,7 @@ impl BotEvent {
         match *self {
             BotEvent::None(r) => r,
             BotEvent::Log(_, r) => r,
-            BotEvent::Send(_, r) => r
+            BotEvent::Send(_, r) => r,
         }
     }
 }
@@ -49,18 +49,17 @@ pub struct MessageData<'a> {
     pub self_name: &'a str,
     pub user: &'a str,
     pub channel: &'a str,
-    pub msg: &'a str
+    pub msg: &'a str,
 }
 
 struct BotCore {
     plugins: Vec<Box<Plugin>>,
     users: HashMap<String, String>,
     channels: HashMap<String, String>,
-    logger: Logger
+    logger: Logger,
 }
 
 impl BotCore {
-
     fn new() -> BotCore {
         let mut plugins: Vec<Box<Plugin>> = Vec::new();
 
@@ -74,74 +73,90 @@ impl BotCore {
             plugins: plugins,
             users: HashMap::new(),
             channels: HashMap::new(),
-            logger: Logger::new(log_dir)
+            logger: Logger::new(log_dir),
         }
     }
 
     pub fn handle_message(&mut self, client: &RtmClient, user: &str, channel: &str, msg: &str) {
         let resp = client.start_response();
-        let user_name = if let Some(name) = self.users.get(user) { &name } else { user };
-        let channel_name = if let Some(name) = self.channels.get(channel) { &name } else { channel };
+        let user_name = if let Some(name) = self.users.get(user) {
+            &name
+        } else {
+            user
+        };
+        let channel_name = if let Some(name) = self.channels.get(channel) {
+            &name
+        } else {
+            channel
+        };
         let _ = self.logger.log(format!("<{}> {}", user_name, msg));
-        let self_name = resp.slf.as_ref().and_then(|u| u.name.as_ref().cloned()).unwrap();
+        let self_name = resp.slf
+            .as_ref()
+            .and_then(|u| u.name.as_ref().cloned())
+            .unwrap();
         let msg_data = MessageData {
             self_name: &self_name,
             user: user_name,
             channel: channel_name,
-            msg: msg
+            msg: msg,
         };
 
-        self.plugins.sort_by_key(|x| x.plugin_priority(user, channel, msg));
+        self.plugins
+            .sort_by_key(|x| x.plugin_priority(user, channel, msg));
         for plugin in (&mut self.plugins).into_iter() {
             let command_char = &SETTINGS.lock().unwrap().command_char;
-            let result = 
-                if msg.starts_with(command_char) {
-                    let params = msg[command_char.len()..].split_whitespace().map(|x| x.to_lowercase()).collect();
-                    plugin.handle_command(user_name, channel_name, params)
-                }
-                else {
-                    plugin.handle_message(msg_data.clone())
-                };
+            let result = if msg.starts_with(command_char) {
+                let params = msg[command_char.len()..]
+                    .split_whitespace()
+                    .map(|x| x.to_lowercase())
+                    .collect();
+                plugin.handle_command(user_name, channel_name, params)
+            } else {
+                plugin.handle_message(msg_data.clone())
+            };
             let resume = result.resume_mode();
             match result {
                 BotEvent::Log(message, _) => {
                     let _ = self.logger.log(message);
-                },
+                }
                 BotEvent::Send(message, _) => {
                     let sender = client.sender();
                     if let Err(e) = sender.send_message(channel, &message) {
-                        let _ = self.logger.log(format!("***ERROR: Couldn't send message: {:?}", e));
-                    }
-                    else {
+                        let _ = self.logger
+                            .log(format!("***ERROR: Couldn't send message: {:?}", e));
+                    } else {
                         let _ = self.logger.log(format!("<{}> {}", self_name, &message));
                     }
-                },
-                BotEvent::None(_) => ()
+                }
+                BotEvent::None(_) => (),
             }
             if resume == ResumeEventHandling::Stop {
                 break;
             }
         }
     }
-
 }
 
 impl EventHandler for BotCore {
-
     fn on_event(&mut self, client: &RtmClient, event: Event) {
         match event {
             Event::Message(ref msg) => {
                 match *msg.clone() {
-                    Message::Standard(MessageStandard { user, text, channel, .. }) => {
+                    Message::Standard(MessageStandard {
+                                          user,
+                                          text,
+                                          channel,
+                                          ..
+                                      }) => {
                         let user = user.unwrap();
                         let channel = channel.unwrap();
                         let text = text.unwrap();
                         self.handle_message(client, &user, &channel, &text);
-                    },
-                    _ => ()
+                    }
+                    _ => (),
                 }
-            },
-            _ => ()
+            }
+            _ => (),
         }
     }
 
@@ -153,28 +168,38 @@ impl EventHandler for BotCore {
         let resp = client.start_response();
         if let Some(ref users) = resp.users {
             for user in users.into_iter() {
-                let prefix = if Some(true) == user.is_primary_owner { "&" }
-                             else if Some(true) == user.is_owner { "~" }
-                             else if Some(true) == user.is_admin { "@" }
-                             else { "" };
-                self.users.insert(user.id.as_ref().cloned().unwrap(), format!("{}{}", prefix, &user.name.as_ref().unwrap()));
+                let prefix = if Some(true) == user.is_primary_owner {
+                    "&"
+                } else if Some(true) == user.is_owner {
+                    "~"
+                } else if Some(true) == user.is_admin {
+                    "@"
+                } else {
+                    ""
+                };
+                self.users
+                    .insert(user.id.as_ref().cloned().unwrap(),
+                            format!("{}{}", prefix, &user.name.as_ref().unwrap()));
             }
         }
 
         if let Some(ref channels) = resp.channels {
             for channel in channels.into_iter() {
-                self.channels.insert(channel.id.as_ref().cloned().unwrap(), channel.name.as_ref().cloned().unwrap());
+                self.channels
+                    .insert(channel.id.as_ref().cloned().unwrap(),
+                            channel.name.as_ref().cloned().unwrap());
             }
         }
-        
+
         let _ = self.logger.log("*** Connected to Slack ***");
     }
 }
 
 fn main() {
     let mut handler = BotCore::new();
+    let token = SETTINGS.lock().unwrap().token.clone();
 
-    if let Err(e) = RtmClient::login_and_run::<BotCore>(&SETTINGS.lock().unwrap().token, &mut handler) {
+    if let Err(e) = RtmClient::login_and_run::<BotCore>(&token, &mut handler) {
         println!("{:?}", e);
     }
 }
