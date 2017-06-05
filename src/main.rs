@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate slack;
+extern crate slack_api;
 extern crate regex;
 extern crate timer;
 extern crate chrono;
@@ -14,7 +15,8 @@ mod logger;
 
 use std::collections::HashMap;
 use std::env;
-use slack::{RtmClient, EventHandler, Event, Error, Message};
+use slack::{RtmClient, EventHandler, Event, Message};
+use slack_api::MessageStandard;
 use settings::SETTINGS;
 use logger::Logger;
 use plugin::Plugin;
@@ -76,11 +78,12 @@ impl BotCore {
         }
     }
 
-    pub fn handle_message(&mut self, client: &mut RtmClient, user: &str, channel: &str, msg: &str) {
+    pub fn handle_message(&mut self, client: &RtmClient, user: &str, channel: &str, msg: &str) {
+        let resp = client.start_response();
         let user_name = if let Some(name) = self.users.get(user) { &name } else { user };
         let channel_name = if let Some(name) = self.channels.get(channel) { &name } else { channel };
         let _ = self.logger.log(format!("<{}> {}", user_name, msg));
-        let self_name = client.get_name().unwrap();
+        let self_name = resp.slf.as_ref().and_then(|u| u.name.as_ref().cloned()).unwrap();
         let msg_data = MessageData {
             self_name: &self_name,
             user: user_name,
@@ -105,11 +108,12 @@ impl BotCore {
                     let _ = self.logger.log(message);
                 },
                 BotEvent::Send(message, _) => {
-                    if let Err(e) = client.send_message(channel, &message) {
+                    let sender = client.sender();
+                    if let Err(e) = sender.send_message(channel, &message) {
                         let _ = self.logger.log(format!("***ERROR: Couldn't send message: {:?}", e));
                     }
                     else {
-                        let _ = self.logger.log(format!("<{}> {}", client.get_name().unwrap(), &message));
+                        let _ = self.logger.log(format!("<{}> {}", self_name, &message));
                     }
                 },
                 BotEvent::None(_) => ()
@@ -124,15 +128,11 @@ impl BotCore {
 
 impl EventHandler for BotCore {
 
-    fn on_event(&mut self, client: &mut RtmClient, event: Result<&Event, Error>, _: &str) {
-        if event.is_err() {
-            return;
-        }
-
-        match *(event.unwrap()) {
+    fn on_event(&mut self, client: &RtmClient, event: Event) {
+        match event {
             Event::Message(ref msg) => {
-                match msg.clone() {
-                    Message::Standard { user, text, channel, .. } => {
+                match *msg.clone() {
+                    Message::Standard(MessageStandard { user, text, channel, .. }) => {
                         let user = user.unwrap();
                         let channel = channel.unwrap();
                         let text = text.unwrap();
@@ -145,26 +145,26 @@ impl EventHandler for BotCore {
         }
     }
 
-    fn on_ping(&mut self, _: &mut RtmClient) {
-    }
-
-    fn on_close(&mut self, _: &mut RtmClient) {
+    fn on_close(&mut self, _: &RtmClient) {
         let _ = self.logger.log("*** Disconnected ***");
     }
 
-    fn on_connect(&mut self, client: &mut RtmClient) {
-        let users = client.get_users();
-        for user in users.into_iter() {
-            let prefix = if Some(true) == user.is_primary_owner { "&" }
-                         else if Some(true) == user.is_owner { "~" }
-                         else if Some(true) == user.is_admin { "@" }
-                         else { "" };
-            self.users.insert(user.id.clone(), format!("{}{}", prefix, &user.name));
+    fn on_connect(&mut self, client: &RtmClient) {
+        let resp = client.start_response();
+        if let Some(ref users) = resp.users {
+            for user in users.into_iter() {
+                let prefix = if Some(true) == user.is_primary_owner { "&" }
+                             else if Some(true) == user.is_owner { "~" }
+                             else if Some(true) == user.is_admin { "@" }
+                             else { "" };
+                self.users.insert(user.id.as_ref().cloned().unwrap(), format!("{}{}", prefix, &user.name.as_ref().unwrap()));
+            }
         }
 
-        let channels = client.get_channels();
-        for channel in channels.into_iter() {
-            self.channels.insert(channel.id.clone(), channel.name.clone());
+        if let Some(ref channels) = resp.channels {
+            for channel in channels.into_iter() {
+                self.channels.insert(channel.id.as_ref().cloned().unwrap(), channel.name.as_ref().cloned().unwrap());
+            }
         }
         
         let _ = self.logger.log("*** Connected to Slack ***");
@@ -172,10 +172,9 @@ impl EventHandler for BotCore {
 }
 
 fn main() {
-    let mut client = RtmClient::new(&SETTINGS.lock().unwrap().token);
     let mut handler = BotCore::new();
 
-    if let Err(e) = client.login_and_run::<BotCore>(&mut handler) {
+    if let Err(e) = RtmClient::login_and_run::<BotCore>(&SETTINGS.lock().unwrap().token, &mut handler) {
         println!("{:?}", e);
     }
 }

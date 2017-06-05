@@ -16,7 +16,8 @@ name = "dict-gen"
 path = "src/dict-gen/main.rs"
 
 [dependencies]
-slack = "0.15"
+slack = "0.18"
+slack_api = "*"
 lazy_static = "*"
 regex = "0.1"
 timer = "0.1"
