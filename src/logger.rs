@@ -1,7 +1,7 @@
+use chrono::{Date, DateTime, Local, Timelike};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use chrono::{Date, DateTime, Local, Timelike};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum LogMode {

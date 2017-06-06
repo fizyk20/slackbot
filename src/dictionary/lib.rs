@@ -1,10 +1,10 @@
 extern crate rand;
 
-use std::collections::{HashMap, BTreeMap};
+use rand::Rng;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::path::Path;
-use rand::Rng;
 
 fn to_4u8(x: u32) -> [u8; 4] {
     let mut result = [0; 4];

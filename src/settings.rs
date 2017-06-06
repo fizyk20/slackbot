@@ -1,10 +1,10 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::io::{Read, Write};
-use std::borrow::Borrow;
-use std::hash::Hash;
-use std::collections::HashMap;
 use regex::Regex;
+use std::borrow::Borrow;
+use std::collections::HashMap;
+use std::fs;
+use std::hash::Hash;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 
 pub struct Settings {
     path: PathBuf,

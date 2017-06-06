@@ -1,13 +1,13 @@
 extern crate regex;
 extern crate dictionary;
 
-use std::env::args;
-use std::fs;
-use std::fmt::Debug;
-use std::path::Path;
-use std::io::Read;
-use regex::Regex;
 use dictionary::Dictionary;
+use regex::Regex;
+use std::env::args;
+use std::fmt::Debug;
+use std::fs;
+use std::io::Read;
+use std::path::Path;
 
 fn learn_from_file<P: AsRef<Path> + Debug>(path: P, dict: &mut Dictionary) {
     println!("{:?}...", &path);

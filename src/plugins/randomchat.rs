@@ -1,12 +1,12 @@
-use plugin::Plugin;
-use {BotEvent, ResumeEventHandling, MessageData};
-use dictionary::Dictionary;
-use settings::SETTINGS;
-use rand::{self, Rng};
-use std::str::FromStr;
-use timer::{Timer, Guard};
+use {BotEvent, MessageData, ResumeEventHandling};
 use chrono::Duration;
+use dictionary::Dictionary;
+use plugin::Plugin;
+use rand::{self, Rng};
+use settings::SETTINGS;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use timer::{Guard, Timer};
 
 pub struct RandomChat {
     dict: Arc<Mutex<Dictionary>>,

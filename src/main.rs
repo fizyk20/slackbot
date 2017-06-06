@@ -13,14 +13,14 @@ mod plugin;
 mod plugins;
 mod logger;
 
-use std::collections::HashMap;
-use std::env;
-use slack::{RtmClient, EventHandler, Event, Message};
-use slack_api::MessageStandard;
-use settings::SETTINGS;
 use logger::Logger;
 use plugin::Plugin;
 use plugins::*;
+use settings::SETTINGS;
+use slack::{Event, EventHandler, Message, RtmClient};
+use slack_api::MessageStandard;
+use std::collections::HashMap;
+use std::env;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum ResumeEventHandling {

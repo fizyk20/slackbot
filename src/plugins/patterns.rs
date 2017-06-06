@@ -1,8 +1,8 @@
+use {BotEvent, MessageData, ResumeEventHandling};
 use plugin::Plugin;
 use regex::Regex;
 use std::fs::File;
 use std::io::{self, Read};
-use {BotEvent, ResumeEventHandling, MessageData};
 
 pub struct Patterns {
     patterns: Vec<(Regex, String)>,
