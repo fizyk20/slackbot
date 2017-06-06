@@ -89,13 +89,14 @@ impl BotCore {
         } else {
             channel
         };
+
         let _ = self.logger.log(format!("<{}> {}", user_name, msg));
         let self_name = resp.slf
             .as_ref()
-            .and_then(|u| u.name.as_ref().cloned())
+            .and_then(|u| u.name.as_ref())
             .unwrap();
         let msg_data = MessageData {
-            self_name: &self_name,
+            self_name: self_name,
             user: user_name,
             channel: channel_name,
             msg: msg,
@@ -103,8 +104,12 @@ impl BotCore {
 
         self.plugins
             .sort_by_key(|x| x.plugin_priority(user, channel, msg));
+
         for plugin in &mut self.plugins {
+            // detect if a command
             let command_char = &SETTINGS.lock().unwrap().command_char;
+
+            // pass to the plugin
             let result = if msg.starts_with(command_char) {
                 let params = msg[command_char.len()..]
                     .split_whitespace()
@@ -114,6 +119,8 @@ impl BotCore {
             } else {
                 plugin.handle_message(msg_data)
             };
+
+            // perform the action requested by the plugin
             let resume = result.resume_mode();
             match result {
                 BotEvent::Log(message, _) => {
@@ -130,6 +137,7 @@ impl BotCore {
                 }
                 BotEvent::None(_) => (),
             }
+
             if resume == ResumeEventHandling::Stop {
                 break;
             }
@@ -197,6 +205,7 @@ impl EventHandler for BotCore {
 
 fn main() {
     let mut handler = BotCore::new();
+    // clone to avoid holding the lock
     let token = SETTINGS.lock().unwrap().token.clone();
 
     if let Err(e) = RtmClient::login_and_run::<BotCore>(&token, &mut handler) {
