@@ -19,7 +19,6 @@ impl Settings {
         let mut file = fs::File::open(path).ok().unwrap();
         let mut settings = String::new();
         file.read_to_string(&mut settings)
-            .ok()
             .expect("Couldn't read from file");
 
         let mut values = HashMap::new();
@@ -51,7 +50,7 @@ impl Settings {
 
     pub fn save(&self) {
         let mut file = fs::File::create(&self.path).unwrap();
-        for (key, value) in self.other.iter() {
+        for (key, value) in &self.other {
             let line = format!("\"{}\" : \"{}\"\n", key, value);
             let _ = file.write(line.as_bytes());
         }

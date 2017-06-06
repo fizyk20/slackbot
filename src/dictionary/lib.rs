@@ -27,20 +27,26 @@ pub enum Word {
     Start1,
     Start2,
     Word(u32),
-    End
+    End,
 }
 
 impl Word {
     pub fn into_bytes(&self) -> [u8; 5] {
         let mut result = [0; 5];
         match *self {
-            Word::Start1 => { result[0] = 1; },
-            Word::Start2 => { result[0] = 2; },
-            Word::End => { result[0] = 0xFF; },
+            Word::Start1 => {
+                result[0] = 1;
+            }
+            Word::Start2 => {
+                result[0] = 2;
+            }
+            Word::End => {
+                result[0] = 0xFF;
+            }
             Word::Word(i) => {
                 let i_bytes = to_4u8(i);
                 for j in 0..4 {
-                    result[j+1] = i_bytes[j];
+                    result[j + 1] = i_bytes[j];
                 }
             }
         }
@@ -57,7 +63,7 @@ impl Word {
             1 => Some(Word::Start1),
             2 => Some(Word::Start2),
             0xFF => Some(Word::End),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -66,33 +72,34 @@ pub type Entry = (Word, Word);
 
 struct ByteReader<'a> {
     bytes: &'a [u8],
-    cursor: usize
+    cursor: usize,
 }
 
 impl<'a> ByteReader<'a> {
     fn new(bytes: &[u8]) -> ByteReader {
         ByteReader {
             bytes: bytes,
-            cursor: 0
+            cursor: 0,
         }
     }
 
     fn read_u32(&mut self) -> u32 {
-        let result = to_u32(&self.bytes[self.cursor..self.cursor+4]).unwrap();
+        let result = to_u32(&self.bytes[self.cursor..self.cursor + 4]).unwrap();
         self.cursor += 4;
         result
     }
 
     fn read_word(&mut self) -> Word {
-        let result = Word::from_bytes(&self.bytes[self.cursor..self.cursor+5]).unwrap();
+        let result = Word::from_bytes(&self.bytes[self.cursor..self.cursor + 5]).unwrap();
         self.cursor += 5;
         result
     }
 
     fn read_string(&mut self) -> String {
-        let word_length = to_u32(&self.bytes[self.cursor..self.cursor+4]).unwrap() as usize;
+        let word_length = to_u32(&self.bytes[self.cursor..self.cursor + 4]).unwrap() as usize;
         self.cursor += 4;
-        let word = ::std::str::from_utf8(&self.bytes[self.cursor..self.cursor+word_length]).unwrap();
+        let word = ::std::str::from_utf8(&self.bytes[self.cursor..self.cursor + word_length])
+            .unwrap();
         self.cursor += word_length;
         word.to_string()
     }
@@ -101,7 +108,7 @@ impl<'a> ByteReader<'a> {
 pub struct Dictionary {
     words: Vec<String>,
     index_map: HashMap<String, usize>,
-    dict: HashMap<Entry, BTreeMap<Word, u32>>
+    dict: HashMap<Entry, BTreeMap<Word, u32>>,
 }
 
 impl Dictionary {
@@ -109,7 +116,7 @@ impl Dictionary {
         Dictionary {
             words: Vec::new(),
             index_map: HashMap::new(),
-            dict: HashMap::new()
+            dict: HashMap::new(),
         }
     }
 
@@ -132,11 +139,11 @@ impl Dictionary {
             result.extend_from_slice(&key.0.into_bytes());
             result.extend_from_slice(&key.1.into_bytes());
             // second, possible results
-            let data = self.dict.get(key).unwrap();
+            let data = &self.dict[key];
             // btreemap length
             result.extend_from_slice(&to_4u8(data.len() as u32));
             // and entries
-            for (word, chance) in data.into_iter() {
+            for (word, chance) in data {
                 result.extend_from_slice(&word.into_bytes());
                 result.extend_from_slice(&to_4u8(*chance));
             }
@@ -174,37 +181,38 @@ impl Dictionary {
             hashmap.insert((word1, word2), results);
         }
         Some(Dictionary {
-            words: words,
-            index_map: index_map,
-            dict: hashmap
-        })
+                 words: words,
+                 index_map: index_map,
+                 dict: hashmap,
+             })
     }
 
     pub fn save<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        let mut file = try!(File::create(path));
+        let mut file = File::create(path)?;
         let bytes = self.to_bytes();
-        try!(file.write(&bytes));
+        file.write_all(&bytes)?;
         Ok(())
     }
 
     pub fn load<P: AsRef<Path>>(path: P) -> io::Result<Dictionary> {
-        let mut file = try!(File::open(path));
+        let mut file = File::open(path)?;
         let mut bytes = Vec::new();
-        try!(file.read_to_end(&mut bytes));
+        file.read_to_end(&mut bytes)?;
         if let Some(dict) = Dictionary::from_bytes(&bytes) {
             Ok(dict)
-        }
-        else {
+        } else {
             Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid dictionary input"))
         }
     }
 
     fn insert_word<S: AsRef<str>>(&mut self, word: S) -> usize {
         if let Some(index) = self.index_map.get(&word.as_ref().to_lowercase()) {
-            return *index
+            return *index;
         }
         self.words.push(word.as_ref().to_string());
-        self.index_map.insert(word.as_ref().to_lowercase().to_string(), self.words.len() - 1);
+        self.index_map
+            .insert(word.as_ref().to_lowercase().to_string(),
+                    self.words.len() - 1);
         self.words.len() - 1
     }
 
@@ -214,9 +222,9 @@ impl Dictionary {
         words_new.extend(words.map(|x| Word::Word(self.insert_word(x) as u32)));
         words_new.push(Word::End);
 
-        for i in 2..words_new.len() {
-            let entry = (words_new[i-2], words_new[i-1]);
-            let word = words_new[i];
+        for window in words_new.windows(3) {
+            let entry = (window[0], window[1]);
+            let word = window[2];
             if let Some(data) = self.dict.get_mut(&entry) {
                 if let Some(chance) = data.get_mut(&word) {
                     *chance += 1;
@@ -236,8 +244,7 @@ impl Dictionary {
         let possibilities;
         if let Some(p) = self.dict.get(&(w1, w2)) {
             possibilities = p;
-        }
-        else {
+        } else {
             return None;
         }
         let mut sum = 0;
@@ -265,8 +272,7 @@ impl Dictionary {
             let next_word;
             if let Some(nw) = self.get_next_word(w1, w2) {
                 next_word = nw;
-            }
-            else {
+            } else {
                 break;
             }
             if next_word == Word::End {
@@ -279,17 +285,15 @@ impl Dictionary {
             w2 = next_word;
         }
 
-        if words.len() > 0 {
+        if !words.is_empty() {
             let mut result = words[0].to_string();
             for word in &words[1..] {
                 result.push_str(" ");
                 result.push_str(word);
             }
             result
-        }
-        else {
+        } else {
             String::new()
         }
     }
 }
-

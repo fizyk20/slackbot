@@ -10,9 +10,9 @@ pub struct Patterns {
 
 impl Patterns {
     pub fn new() -> io::Result<Patterns> {
-        let mut file = try!(File::open("patterns.ini"));
+        let mut file = File::open("patterns.ini")?;
         let mut contents = String::new();
-        try!(file.read_to_string(&mut contents));
+        file.read_to_string(&mut contents)?;
 
         let mut patterns = Vec::new();
         let mut lines = contents.lines().peekable();
@@ -34,7 +34,7 @@ impl Plugin for Patterns {
     }
 
     fn handle_message(&mut self, data: MessageData) -> BotEvent {
-        for &(ref regex, ref response) in (&self.patterns).into_iter() {
+        for &(ref regex, ref response) in &self.patterns {
             if regex.is_match(&data.msg.to_lowercase()) {
                 return BotEvent::Send(response.clone(), ResumeEventHandling::Resume);
             }

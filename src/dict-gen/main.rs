@@ -16,14 +16,16 @@ fn learn_from_file<P: AsRef<Path> + Debug>(path: P, dict: &mut Dictionary) {
     let mut contents = String::new();
     let _ = file.read_to_string(&mut contents);
 
-    let rx_line = Regex::new(r"\(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\)\s*<(?P<nick>[^>]+)> (?P<message>.*)").unwrap();
+    let rx_line =
+        Regex::new(r"\(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\)\s*<(?P<nick>[^>]+)> (?P<message>.*)")
+            .unwrap();
 
     for line in contents.lines() {
         if let Some(caps) = rx_line.captures(line) {
             let nick = caps.name("nick").unwrap();
             let msg = caps.name("message").unwrap();
 
-            if !nick.to_lowercase().contains("lucidbot") && !msg.starts_with("!") {
+            if !nick.to_lowercase().contains("lucidbot") && !msg.starts_with('!') {
                 dict.learn_from_line(msg);
             }
         }
@@ -38,8 +40,7 @@ fn learn_from_dir<P: AsRef<Path>>(path: P, dict: &mut Dictionary) {
             let filetype = entry.file_type().unwrap();
             if filetype.is_dir() {
                 learn_from_dir(entry.path(), dict);
-            }
-            else if filetype.is_file() {
+            } else if filetype.is_file() {
                 learn_from_file(entry.path(), dict);
             }
         }

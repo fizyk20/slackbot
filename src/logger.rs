@@ -25,7 +25,7 @@ impl Logger {
         let day_str = format!("{}", date.format("%d"));
 
         let path = base_dir.join(year_str).join(month_str);
-        try!(fs::create_dir_all(&path));
+        fs::create_dir_all(&path)?;
         Ok(path.join(format!("{}.txt", day_str)))
     }
 
@@ -57,10 +57,13 @@ impl Logger {
                 self.day_passed = false;
             }
 
-            let path = try!(self.gen_path(&self.cur_date));
-            let mut file = try!(OpenOptions::new().create(true).append(true).open(path));
+            let path = self.gen_path(&self.cur_date)?;
+            let mut file = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(path)?;
             let what = format!("[{}] {}\n", now_str, what.as_ref());
-            try!(file.write(what.as_bytes()));
+            file.write_all(what.as_bytes())?;
             self.last_log = now;
         }
 

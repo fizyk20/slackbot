@@ -82,20 +82,19 @@ impl Plugin for RandomChat {
                     .lock()
                     .unwrap()
                     .set_other("randomchat_enabled".to_string(), "true".to_string());
-                return BotEvent::Send(String::from("RandomChat enabled."),
-                                      ResumeEventHandling::Stop);
+                BotEvent::Send(String::from("RandomChat enabled."),
+                               ResumeEventHandling::Stop)
             } else if params[1] == "disable" {
                 self.enabled = false;
                 SETTINGS
                     .lock()
                     .unwrap()
                     .set_other("randomchat_enabled".to_string(), "false".to_string());
-                return BotEvent::Send(String::from("RandomChat disabled."),
-                                      ResumeEventHandling::Stop);
+                BotEvent::Send(String::from("RandomChat disabled."),
+                               ResumeEventHandling::Stop)
             } else {
-                return BotEvent::Send(format!("Unknown parameter value: {}", params[1])
-                                          .to_string(),
-                                      ResumeEventHandling::Stop);
+                BotEvent::Send(format!("Unknown parameter value: {}", params[1]).to_string(),
+                               ResumeEventHandling::Stop)
             }
         } else {
             BotEvent::None(ResumeEventHandling::Resume)

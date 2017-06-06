@@ -37,8 +37,8 @@ pub enum BotEvent {
 impl BotEvent {
     pub fn resume_mode(&self) -> ResumeEventHandling {
         match *self {
-            BotEvent::None(r) => r,
-            BotEvent::Log(_, r) => r,
+            BotEvent::None(r) |
+            BotEvent::Log(_, r) |
             BotEvent::Send(_, r) => r,
         }
     }
@@ -103,7 +103,7 @@ impl BotCore {
 
         self.plugins
             .sort_by_key(|x| x.plugin_priority(user, channel, msg));
-        for plugin in (&mut self.plugins).into_iter() {
+        for plugin in &mut self.plugins {
             let command_char = &SETTINGS.lock().unwrap().command_char;
             let result = if msg.starts_with(command_char) {
                 let params = msg[command_char.len()..]
@@ -112,7 +112,7 @@ impl BotCore {
                     .collect();
                 plugin.handle_command(user_name, channel_name, params)
             } else {
-                plugin.handle_message(msg_data.clone())
+                plugin.handle_message(msg_data)
             };
             let resume = result.resume_mode();
             match result {
@@ -141,17 +141,17 @@ impl EventHandler for BotCore {
     fn on_event(&mut self, client: &RtmClient, event: Event) {
         match event {
             Event::Message(ref msg) => {
-                match *msg.clone() {
+                match **msg {
                     Message::Standard(MessageStandard {
-                                          user,
-                                          text,
-                                          channel,
+                                          ref user,
+                                          ref text,
+                                          ref channel,
                                           ..
                                       }) => {
-                        let user = user.unwrap();
-                        let channel = channel.unwrap();
-                        let text = text.unwrap();
-                        self.handle_message(client, &user, &channel, &text);
+                        let user = user.as_ref().unwrap();
+                        let channel = channel.as_ref().unwrap();
+                        let text = text.as_ref().unwrap();
+                        self.handle_message(client, user, channel, text);
                     }
                     _ => (),
                 }
@@ -167,7 +167,7 @@ impl EventHandler for BotCore {
     fn on_connect(&mut self, client: &RtmClient) {
         let resp = client.start_response();
         if let Some(ref users) = resp.users {
-            for user in users.into_iter() {
+            for user in users {
                 let prefix = if Some(true) == user.is_primary_owner {
                     "&"
                 } else if Some(true) == user.is_owner {
@@ -184,7 +184,7 @@ impl EventHandler for BotCore {
         }
 
         if let Some(ref channels) = resp.channels {
-            for channel in channels.into_iter() {
+            for channel in channels {
                 self.channels
                     .insert(channel.id.as_ref().cloned().unwrap(),
                             channel.name.as_ref().cloned().unwrap());
