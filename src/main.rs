@@ -108,10 +108,10 @@ impl BotCore {
 
         for plugin in &mut self.plugins {
             // detect if a command
-            let command_char = &SETTINGS.lock().unwrap().command_char;
+            let command_char = SETTINGS.lock().unwrap().command_char.clone();
 
             // pass to the plugin
-            let result = if msg.starts_with(command_char) {
+            let result = if msg.starts_with(&command_char) {
                 let params = msg[command_char.len()..]
                     .split_whitespace()
                     .map(|x| x.to_lowercase())
