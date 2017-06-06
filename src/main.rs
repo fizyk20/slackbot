@@ -65,6 +65,7 @@ impl BotCore {
 
         // load all used plugins
         plugins.push(Box::new(Patterns::new().unwrap()));
+        plugins.push(Box::new(Eightball::new().unwrap()));
         plugins.push(Box::new(RandomChat::new()));
 
         let log_dir = env::current_dir().unwrap().as_path().join("logs");
